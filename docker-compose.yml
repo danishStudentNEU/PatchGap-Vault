@@ -1,0 +1,60 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: patchgap-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  db:
+    image: postgres:16
+    container_name: patchgap-db
+    environment:
+      POSTGRES_USER: patchgap
+      POSTGRES_PASSWORD: patchgap
+      POSTGRES_DB: patchgap
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build: .
+    container_name: patchgap-api
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=db
+      - POSTGRES_DB=patchgap
+      - POSTGRES_USER=patchgap
+      - POSTGRES_PASSWORD=patchgap
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      - redis
+      - db
+
+  worker:
+    build: .
+    container_name: patchgap-worker
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=db
+      - POSTGRES_DB=patchgap
+      - POSTGRES_USER=patchgap
+      - POSTGRES_PASSWORD=patchgap
+      - PYTHONUNBUFFERED=1
+    command: ["python", "worker.py"]
+    depends_on:
+      - redis
+      - db
+
+volumes:
+  redis_data:
+  pg_data:

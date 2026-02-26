@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.pgdata/
+redis_data/
+pg_data/
+*.log
